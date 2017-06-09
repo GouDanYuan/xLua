@@ -9,7 +9,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using XLua;
 
-namespace EZhex1991.XLuaExamples
+namespace EZhex1991.XLuaExample
 {
     public abstract class TLuaBehaviour<T> : MonoBehaviour
         where T : TLuaBehaviour<T>

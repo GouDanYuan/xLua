@@ -10,7 +10,7 @@ using System.Linq;
 using System.Reflection;
 using XLua;
 
-namespace EZFramework.XLuaGen
+namespace EZhex1991.XLuaExample
 {
     public static class UnityEngineGenList
     {

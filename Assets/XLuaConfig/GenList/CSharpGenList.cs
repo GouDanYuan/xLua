@@ -8,7 +8,7 @@ using System;
 using System.Collections.Generic;
 using XLua;
 
-namespace EZFramework.XLuaGen
+namespace EZhex1991.XLuaExample
 {
     public class CSharpGenList
     {

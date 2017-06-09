@@ -10,40 +10,19 @@ using System.IO;
 using UnityEngine;
 using XLua;
 
-namespace EZhex1991.XLuaExamples
+namespace EZhex1991.XLuaExample
 {
-    public class LuaManager : MonoBehaviour
+    [LuaCallCSharp]
+    public class LuaManager : CustomLoader  // 不懂CustomLoader的看第一个例子
     {
-        public string require;
-
-        private string luaDirPath;
-        private LuaEnv luaEnv;
-
-        void Start()
+        private static LuaManager instance;    // 自己写单例
+        public static LuaManager Instance { get { return instance; } }
+        void Awake()
         {
-            luaDirPath = Application.dataPath + "/XLuaExamples/";
-            luaEnv = new LuaEnv();
-            luaEnv.AddLoader(LoadFromFile);
-            luaEnv.DoString("require('" + require + "')");
+            instance = this;
         }
 
-        private byte[] LoadFromFile(ref string fileName)
-        {
-            string filePath = luaDirPath + fileName.Replace('.', '/') + ".lua";             // lua文件的实际路径
-            fileName = fileName.Replace('.', '/');     // 返给lua调试器的路径
-            try
-            {
-                // File.ReadAllBytes返回值可能会带有BOM（0xEF，0xBB，0xBF），这会导致脚本加载出错（</239>）
-                byte[] script = System.Text.Encoding.UTF8.GetBytes(File.ReadAllText(filePath));
-                return script;
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        public void Yield(object cor, Action callback)
+        public void Yield(object cor, Action callback)  // 这里的两个方法是用来在lua中写携程的
         {
             StartCoroutine(Cor(cor, callback));
         }

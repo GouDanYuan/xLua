@@ -8,7 +8,7 @@
 using UnityEngine;
 using CSObjectWrapEditor;
 
-namespace EZFramework.XLuaGen
+namespace EZhex1991.XLuaExample
 {
     public static class GenConfig
     {
