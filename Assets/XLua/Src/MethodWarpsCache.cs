@@ -57,6 +57,13 @@ namespace XLua
             this.translator = translator;
             this.targetType = targetType;
             this.method = method;
+#if UNITY_EDITOR
+            if (method.IsDefined(typeof(ObsoleteAttribute), true))
+            {
+                ObsoleteAttribute info = Attribute.GetCustomAttribute(method, typeof(ObsoleteAttribute)) as ObsoleteAttribute;
+                UnityEngine.Debug.LogWarning("Obsolete Method [" + method + "]: " + info.Message);
+            }
+#endif
             HasDefalutValue = false;
         }
 
@@ -457,6 +464,11 @@ namespace XLua
                     MethodInfo add = eventInfo.GetAddMethod();
                     MethodInfo remove = eventInfo.GetRemoveMethod();
 
+                    if (add == null && remove == null)
+                    {
+                        throw new Exception(type.Name + "'s " + eventName + " has either add nor remove");
+                    }
+
                     bool is_static = add != null ? add.IsStatic : remove.IsStatic;
                     if (!is_static) start_idx = 1;
 
@@ -475,7 +487,7 @@ namespace XLua
 
                         try
                         {
-                            Delegate handlerDelegate = translator.CreateDelegateBridge(L, eventInfo.EventHandlerType, start_idx + 2);
+                            object handlerDelegate = translator.CreateDelegateBridge(L, eventInfo.EventHandlerType, start_idx + 2);
                             if (handlerDelegate == null)
                             {
                                 return LuaAPI.luaL_error(L, "invalid #" + (start_idx + 2) + ", needed:" + eventInfo.EventHandlerType);

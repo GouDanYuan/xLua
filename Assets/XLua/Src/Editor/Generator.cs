@@ -825,7 +825,6 @@ namespace CSObjectWrapEditor
             GenOne(typeof(DelegateBridge), (type, type_info) =>
             {
                 type_info.Set("delegates_groups", delegates_groups.ToList());
-                type_info.Set("hotfx_delegates", hotfxDelegates);
             }, templateRef.LuaDelegateBridge, textWriter);
             textWriter.Close();
         }
@@ -899,10 +898,13 @@ namespace CSObjectWrapEditor
 #if !XLUA_GENERAL
         static void clear(string path)
         {
-            System.IO.Directory.Delete(path, true);
-            AssetDatabase.DeleteAsset(path.Substring(path.IndexOf("Assets") + "Assets".Length));
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, true);
+                AssetDatabase.DeleteAsset(path.Substring(path.IndexOf("Assets") + "Assets".Length));
 
-            AssetDatabase.Refresh();
+                AssetDatabase.Refresh();
+            }
         }
 #endif
 
@@ -1416,7 +1418,7 @@ namespace CSObjectWrapEditor
                 if (parameterType.IsGenericParameter)
                 {
                     var parameterConstraints = parameterType.GetGenericParameterConstraints();
-                    if (parameterConstraints.Length == 0 || !parameterConstraints[0].IsClass)
+                    if (parameterConstraints.Length == 0 || !parameterConstraints[0].IsClass || hasGenericParameter(parameterConstraints[0]))
                         return false;
                     hasValidGenericParameter = true;
                 }
