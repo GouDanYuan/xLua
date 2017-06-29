@@ -13,7 +13,7 @@ namespace EZhex1991.XLuaExample
     public static class GenConfig
     {
         [GenPath]
-        public static string GenPath = Application.dataPath + "/Gen/";
+        public static string GenPath = Application.dataPath + "/XLua/Gen/";
 
         [GenCodeMenu]
         public static void OnGenCode()
