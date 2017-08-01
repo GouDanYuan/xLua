@@ -118,12 +118,24 @@ namespace CSObjectWrapEditor
 
             templateRef = new XLuaTemplates()
             {
+#if GEN_CODE_MINIMIZE
+                LuaClassWrap = { name = template_ref.LuaClassWrapGCM.name, text = template_ref.LuaClassWrapGCM.text },
+#else
                 LuaClassWrap = { name = template_ref.LuaClassWrap.name, text = template_ref.LuaClassWrap.text },
+#endif
                 LuaDelegateBridge = { name = template_ref.LuaDelegateBridge.name, text = template_ref.LuaDelegateBridge.text },
                 LuaDelegateWrap = { name = template_ref.LuaDelegateWrap.name, text = template_ref.LuaDelegateWrap.text },
+#if GEN_CODE_MINIMIZE
+                LuaEnumWrap = { name = template_ref.LuaEnumWrapGCM.name, text = template_ref.LuaEnumWrapGCM.text },
+#else
                 LuaEnumWrap = { name = template_ref.LuaEnumWrap.name, text = template_ref.LuaEnumWrap.text },
+#endif
                 LuaInterfaceBridge = { name = template_ref.LuaInterfaceBridge.name, text = template_ref.LuaInterfaceBridge.text },
+#if GEN_CODE_MINIMIZE
+                LuaRegister = { name = template_ref.LuaRegisterGCM.name, text = template_ref.LuaRegisterGCM.text },
+#else
                 LuaRegister = { name = template_ref.LuaRegister.name, text = template_ref.LuaRegister.text },
+#endif
                 LuaWrapPusher = { name = template_ref.LuaWrapPusher.name, text = template_ref.LuaWrapPusher.text },
                 PackUnpack = { name = template_ref.PackUnpack.name, text = template_ref.PackUnpack.text },
                 TemplateCommon = { name = template_ref.TemplateCommon.name, text = template_ref.TemplateCommon.text },
@@ -849,6 +861,10 @@ namespace CSObjectWrapEditor
         {
             types = types.Where(type=>!type.IsEnum);
 
+#if GENERIC_SHARING
+            types = types.GroupBy(t => t.IsGenericType ? t.GetGenericTypeDefinition() : t).Select(g => g.Key);
+#endif
+
             var typeMap = types.ToDictionary(type => {
                 //Debug.Log("type:" + type);
                 return type.ToString();
@@ -963,7 +979,29 @@ namespace CSObjectWrapEditor
                                     select method;
             GenOne(typeof(DelegateBridgeBase), (type, type_info) =>
             {
+#if GENERIC_SHARING
+                type_info.Set("wraps", wraps.Where(t=>!t.IsGenericType).ToList());
+                var genericTypeGroups = wraps.Where(t => t.IsGenericType).GroupBy(t => t.GetGenericTypeDefinition());
+
+                var typeToArgsList = luaenv.NewTable();
+                foreach (var genericTypeGroup in genericTypeGroups)
+                {
+                    var argsList = luaenv.NewTable();
+                    int i = 1;
+                    foreach(var genericType in genericTypeGroup)
+                    {
+                        argsList.Set(i++, genericType.GetGenericArguments());
+                    }
+                    typeToArgsList.Set(genericTypeGroup.Key, argsList);
+                    argsList.Dispose();
+                }
+
+                type_info.Set("generic_wraps", typeToArgsList);
+                typeToArgsList.Dispose();
+#else
                 type_info.Set("wraps", wraps.ToList());
+#endif
+
                 type_info.Set("itf_bridges", itf_bridges.ToList());
                 type_info.Set("extension_methods", extension_methods.ToList());
             }, templateRef.LuaRegister, textWriter);
@@ -1080,7 +1118,7 @@ namespace CSObjectWrapEditor
 
         public static Dictionary<Type, HotfixFlag> HotfixCfg = null;
 
-        static void AddToList(List<Type> list, Func<object> get)
+        static void AddToList(List<Type> list, Func<object> get, Type attr)
         {
             object obj = get();
             if (obj is Type)
@@ -1091,30 +1129,34 @@ namespace CSObjectWrapEditor
             {
                 list.AddRange(obj as IEnumerable<Type>);
             }
+            else
+            {
+                throw new InvalidOperationException("Only field/property with the type IEnumerable<Type> can be marked " + attr.Name);
+            }
         }
 
         static void MergeCfg(MemberInfo test, Type cfg_type, Func<object> get_cfg)
         {
             if (test.IsDefined(typeof(LuaCallCSharpAttribute), false))
             {
-                AddToList(LuaCallCSharp, get_cfg);
+                AddToList(LuaCallCSharp, get_cfg, typeof(LuaCallCSharpAttribute));
                 object[] ccla = test.GetCustomAttributes(typeof(LuaCallCSharpAttribute), false);
                 if (ccla.Length == 1 && (((ccla[0] as LuaCallCSharpAttribute).Flag & GenFlag.GCOptimize) != 0))
                 {
-                    AddToList(GCOptimizeList, get_cfg);
+                    AddToList(GCOptimizeList, get_cfg, typeof(LuaCallCSharpAttribute));
                 }
             }
             if (test.IsDefined(typeof(CSharpCallLuaAttribute), false))
             {
-                AddToList(CSharpCallLua, get_cfg);
+                AddToList(CSharpCallLua, get_cfg, typeof(CSharpCallLuaAttribute));
             }
             if (test.IsDefined(typeof(GCOptimizeAttribute), false))
             {
-                AddToList(GCOptimizeList, get_cfg);
+                AddToList(GCOptimizeList, get_cfg, typeof(GCOptimizeAttribute));
             }
             if (test.IsDefined(typeof(ReflectionUseAttribute), false))
             {
-                AddToList(ReflectionUse, get_cfg);
+                AddToList(ReflectionUse, get_cfg, typeof(ReflectionUseAttribute));
             }
             if (test.IsDefined(typeof(HotfixAttribute), false))
             {
@@ -1175,34 +1217,6 @@ namespace CSObjectWrapEditor
 
             foreach (var t in check_types)
             {
-                if(!t.IsInterface && typeof(GenConfig).IsAssignableFrom(t))
-                {
-                    var cfg = Activator.CreateInstance(t) as GenConfig;
-                    if (cfg.LuaCallCSharp != null) LuaCallCSharp.AddRange(cfg.LuaCallCSharp);
-                    if (cfg.CSharpCallLua != null) CSharpCallLua.AddRange(cfg.CSharpCallLua);
-                    if (cfg.BlackList != null) BlackList.AddRange(cfg.BlackList);
-                }
-                else if (!t.IsInterface && typeof(GCOptimizeConfig).IsAssignableFrom(t))
-                {
-                    var cfg = Activator.CreateInstance(t) as GCOptimizeConfig;
-                    if (cfg.TypeList != null) GCOptimizeList.AddRange(cfg.TypeList);
-                    if (cfg.AdditionalProperties != null)
-                    {
-                        foreach(var kv in cfg.AdditionalProperties)
-                        {
-                            if(!AdditionalProperties.ContainsKey(kv.Key))
-                            {
-                                AdditionalProperties.Add(kv.Key, kv.Value);
-                            }
-                        }
-                    }
-                }
-                else if (!t.IsInterface && typeof(ReflectionConfig).IsAssignableFrom(t))
-                {
-                    var cfg = Activator.CreateInstance(t) as ReflectionConfig;
-                    ReflectionUse.AddRange(cfg.ReflectionUse);
-                }
-
                 MergeCfg(t, null, () => t);
 
                 if (!t.IsAbstract || !t.IsSealed) continue;
@@ -1224,6 +1238,7 @@ namespace CSObjectWrapEditor
             LuaCallCSharp = LuaCallCSharp.Distinct()
                 .Where(type=>/*type.IsPublic && */!isObsolete(type) && !type.IsGenericTypeDefinition)
                 .Where(type => !typeof(Delegate).IsAssignableFrom(type))
+                .Where(type => !type.Name.Contains("<"))
                 .ToList();//public的内嵌Enum（其它类型未测试），IsPublic为false，像是mono的bug
             CSharpCallLua = CSharpCallLua.Distinct()
                 .Where(type =>/*type.IsPublic && */!isObsolete(type) && !type.IsGenericTypeDefinition)
@@ -1422,7 +1437,7 @@ namespace CSObjectWrapEditor
                 if (parameterType.IsGenericParameter)
                 {
                     var parameterConstraints = parameterType.GetGenericParameterConstraints();
-                    if (parameterConstraints.Length == 0 || !parameterConstraints[0].IsClass || hasGenericParameter(parameterConstraints[0]))
+                    if (parameterConstraints.Length == 0 || !parameterConstraints[0].IsClass || (parameterConstraints[0] == typeof(ValueType)) || hasGenericParameter(parameterConstraints[0]))
                         return false;
                     hasValidGenericParameter = true;
                 }
