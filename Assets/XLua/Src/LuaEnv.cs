@@ -46,7 +46,15 @@ namespace XLua
         internal int errorFuncRef = -1;
 
 #if THREAD_SAFE || HOTFIX_ENABLE
-        internal object luaEnvLock = new object();
+        internal static object luaLock = new object();
+
+        internal object luaEnvLock
+        {
+            get
+            {
+                return luaLock;
+            }
+        }
 #endif
 
         const int LIB_VERSION_EXPECT = 102;
@@ -540,6 +548,10 @@ namespace XLua
             end
             xlua.setmetatable = function(cs, mt)
                 return xlua.metatable_operation(cs, mt)
+            end
+            xlua.setclass = function(parent, name, impl)
+                impl.UnderlyingSystemType = parent[name].UnderlyingSystemType
+                rawset(parent, name, impl)
             end
             ";
 
