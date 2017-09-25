@@ -4,8 +4,6 @@
  * Description:
  * 
 */
-using System;
-using System.Collections;
 using System.IO;
 using UnityEngine;
 using XLua;
@@ -18,14 +16,9 @@ namespace EZhex1991.XLuaExample
 
         private string luaDirPath;
         private LuaEnv luaEnv;
-		
-		public static CustomLoader Instance;
-		public Action actionTest = delegate{};
-		public event Action Test;
 
         void Start()
         {
-			Instance = this;
             luaDirPath = Application.dataPath + "/XLuaExamples/";
             luaEnv = new LuaEnv();
             luaEnv.AddLoader(LoadFromFile); // AddLoader(CustomLoader)文档上有说明，自己读取lua源码以byte[]形式返回即可。
