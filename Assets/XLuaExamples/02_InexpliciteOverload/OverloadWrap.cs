@@ -7,12 +7,22 @@
 using UnityEngine;
 using XLua;
 
-// Lua的弱类型特性会造成重载调用的混淆，需要通过异名方法去调用（这里命名空间不同，类名和方法名可以保持不变）
-namespace EZhex1991
+namespace EZhex1991.XLuaExample
 {
     [LuaCallCSharp]
-    public static class Physics
+    public static class OverloadWrap
     {
+        // float和int参数造成UnityEngine.Random.Range重载调用不明确
+        public static int RandomInt(int min, int max)
+        {
+            return UnityEngine.Random.Range(min, max);
+        }
+        public static float RandomFloat(float min, float max)
+        {
+            return UnityEngine.Random.Range(min, max);
+        }
+
+        // out和ref参数造成UnityEngine.Physics.Raycast重载调用不明确
         public static bool Raycast(Ray ray, out RaycastHit hitInfo)
         {
             return UnityEngine.Physics.Raycast(ray, out hitInfo);
