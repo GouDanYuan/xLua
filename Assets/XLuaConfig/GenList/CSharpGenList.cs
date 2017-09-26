@@ -17,5 +17,17 @@ namespace EZhex1991.XLuaExample
         {
             typeof(System.Collections.Generic.Dictionary<object, object>),
         };
+
+        [CSharpCallLua]
+        public static List<Type> CSharpCallLua = new List<Type>()
+        {
+
+        };
+
+        [BlackList]
+        public static List<List<string>> BlackList = new List<List<string>>()
+        {
+
+        };
     }
 }
